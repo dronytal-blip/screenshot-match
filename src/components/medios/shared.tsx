@@ -50,7 +50,7 @@ export function Logo({ light }: { light?: boolean }) {
         <HeartPulse className="size-5" />
       </span>
       <span className={cn("font-display text-lg font-extrabold tracking-tight", light ? "text-primary-foreground" : "text-foreground")}>
-        Medi<span className={light ? "" : "text-primary"}>OS</span>
+        <span className={light ? "" : "text-primary"}>FISIOKITS</span>
       </span>
     </Link>
   );
