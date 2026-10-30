@@ -69,7 +69,7 @@ export const useStore = create<State>()(
           const busy = get().appointments.some((x) => x.doctorId === a.doctorId && x.estado === "in_progress");
           if (busy) return { ok: false, error: "Ya hay una consulta en curso" };
         }
-        const events = [{ tipo: to, timestamp: nowTs() }];
+        const events: { tipo: string; timestamp: string }[] = [{ tipo: to, timestamp: nowTs() }];
         let invoices = get().invoices;
         if (to === "completed" && !invoices.some((i) => i.citaId === id && i.estado !== "cancelled")) {
           const srv = get().services.find((s) => s.id === a.servicioId);
@@ -161,7 +161,7 @@ export const useStore = create<State>()(
 
       addDoctor: (d) => {
         const n = get().doctors.length;
-        set({ doctors: [...get().doctors, { ...d, id: uid("doc"), color: PALETTE[n % PALETTE.length] }] });
+        set({ doctors: [...get().doctors, { ...d, id: uid("doc"), color: PALETTE[n % PALETTE.length]! }] });
       },
       updateDoctor: (id, d) => set({ doctors: get().doctors.map((x) => (x.id === id ? { ...x, ...d } : x)) }),
       updateClinic: (clinic) => set({ clinic }),

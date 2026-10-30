@@ -143,13 +143,13 @@ export function TabBar<T extends string>({ tabs, value, onChange }: { tabs: { id
 export function useSwipeTabs<T extends string>(tabs: T[], value: T, onChange: (t: T) => void) {
   const [x, setX] = useState<number | null>(null);
   return {
-    onTouchStart: (e: React.TouchEvent) => setX(e.touches[0].clientX),
+    onTouchStart: (e: React.TouchEvent) => setX(e.touches[0]!.clientX),
     onTouchEnd: (e: React.TouchEvent) => {
       if (x === null) return;
-      const dx = e.changedTouches[0].clientX - x;
+      const dx = e.changedTouches[0]!.clientX - x;
       const i = tabs.indexOf(value);
-      if (dx < -60 && i < tabs.length - 1) onChange(tabs[i + 1]);
-      if (dx > 60 && i > 0) onChange(tabs[i - 1]);
+      if (dx < -60 && i < tabs.length - 1) onChange(tabs[i + 1]!);
+      if (dx > 60 && i > 0) onChange(tabs[i - 1]!);
       setX(null);
     },
   };
