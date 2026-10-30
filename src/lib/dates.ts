@@ -16,12 +16,12 @@ export function addDays(iso: string, n: number) {
 
 export function parseISO(iso: string) {
   const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, m - 1, d);
+  return new Date(y ?? 0, (m ?? 1) - 1, d ?? 1);
 }
 
 export function toMin(hhmm: string) {
   const [h, m] = hhmm.split(":").map(Number);
-  return h * 60 + m;
+  return (h ?? 0) * 60 + (m ?? 0);
 }
 
 export function fromMin(min: number) {

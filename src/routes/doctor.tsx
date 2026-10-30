@@ -53,7 +53,7 @@ function MiDia({ goConsulta }: { goConsulta: () => void }) {
   const next = today.find((a) => a.estado === "confirmed" || a.estado === "scheduled");
   const act = (id: string, to: "in_progress" | "no_show" | "confirmed") => {
     const r = transition(id, to);
-    if (!r.ok) return toast.error(r.error);
+    if (!r.ok) { toast.error(r.error); return; }
     toast.success(to === "in_progress" ? "Consulta iniciada" : to === "no_show" ? "Marcada como no-show" : "Cita confirmada");
     if (to === "in_progress") goConsulta();
   };
@@ -194,7 +194,7 @@ function MisPacientes() {
           <button key={id} onClick={() => setSel(id)} className="rounded-2xl border bg-card p-5 text-left shadow-soft transition-all hover:border-primary">
             <span className="grid size-11 place-items-center rounded-full bg-primary-soft font-bold text-primary">{p?.nombre[0]}</span>
             <p className="mt-3 font-bold">{p?.nombre}</p>
-            <p className="text-sm text-muted-foreground">Ultima visita: {fmtDateLong(list[0].fecha)}</p>
+            <p className="text-sm text-muted-foreground">Ultima visita: {fmtDateLong(list[0]!.fecha)}</p>
             <p className="text-sm text-muted-foreground">{list.length} consulta(s)</p>
           </button>
         );
