@@ -130,7 +130,7 @@ function Landing() {
 
       <footer className="bg-primary-deep py-12 text-primary-foreground">
         <div className="mx-auto grid max-w-6xl gap-8 px-4 md:grid-cols-3">
-          <div><Logo light /><p className="mt-3 text-sm text-primary-foreground/70">MediOS - Tu clinica. Tus datos. Tu sistema.</p></div>
+          <div><Logo light /><p className="mt-3 text-sm text-primary-foreground/70">FisioKITS - Tu clinica. Tus datos. Tu sistema.</p></div>
           <div className="space-y-2 text-sm text-primary-foreground/80">
             <p className="flex items-center gap-2"><MapPin className="size-4" />{clinic.direccion}</p>
             <p className="flex items-center gap-2"><Phone className="size-4" />{clinic.telefono}</p>

@@ -13,8 +13,8 @@ export const IMG = {
 
 export const seedClinic = (): Clinic => ({
   nombre: "Clinica MediOS Demo",
-  direccion: "Av. Reforma 500, Col. Centro, Ciudad de Mexico",
-  telefono: "+52 55 1234 5678",
+  direccion: "cusco- cusco/ peru",
+  telefono: "+51 00000000",
   email: "hola@mediosdemo.mx",
   apertura: "09:00",
   cierre: "19:00",
