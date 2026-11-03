@@ -58,4 +58,4 @@ export function age(nacimiento: string) {
 }
 
 export const money = (n: number) =>
-  `$${n.toLocaleString("es-MX", { maximumFractionDigits: 0 })} MXN`;
+  `S/ ${n.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
