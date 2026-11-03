@@ -228,7 +228,7 @@ export function ChargeDialog({ citaId, open, onOpenChange }: { citaId: string | 
         ) : (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">{srv?.nombre}</p>
-            <div className="space-y-1.5"><Label>Monto (MXN)</Label><Input type="number" value={monto} onChange={(e) => setMonto(Number(e.target.value))} /></div>
+            <div className="space-y-1.5"><Label>Monto (S/)</Label><Input type="number" value={monto} onChange={(e) => setMonto(Number(e.target.value))} /></div>
             <div className="space-y-1.5">
               <Label>Metodo de pago</Label>
               <div className="grid grid-cols-3 gap-2">
