@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Hydrated, Logo, ServiceIcon, SlotPicker } from "@/components/medios/shared";
 import { useStore } from "@/lib/store";
+import { bookPublicAppointmentDb, isUuid } from "@/lib/api";
 import { availableSlots } from "@/lib/logic";
 import { addDays, fmtDate, fmtDateLong, money, todayISO } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -27,8 +28,8 @@ export const Route = createFileRoute("/booking")({
 const STEPS = ["Especialidad", "Doctor", "Fecha y hora", "Tus datos", "Confirmar"];
 
 function Booking() {
-  const { services, doctors, appointments, role, patients, upsertPatient, createAppointment } = useStore();
-  const me = role === "patient" ? patients.find((p) => p.id === "pac_01") : undefined;
+  const { services, doctors, appointments, role, patients, currentPatientId, clinicId, upsertPatient, createAppointment, syncFromSupabase } = useStore();
+  const me = role === "patient" ? patients.find((p) => p.id === currentPatientId) : undefined;
   const [step, setStep] = useState(0);
   const [srvId, setSrv] = useState<string | null>(null);
   const [docId, setDoc] = useState<string | null>(null);
@@ -56,8 +57,29 @@ function Booking() {
 
   const formOk = form.nombre.trim().length > 2 && /^\d{10}$/.test(form.telefono) && /\S+@\S+\.\S+/.test(form.email) && form.motivo.trim().length > 2;
 
-  const confirm = () => {
+  const confirm = async () => {
     if (!srv || !doc || !fecha || !hora) return;
+    if (isUuid(clinicId) && isUuid(doc.id) && isUuid(srv.id)) {
+      const res = await bookPublicAppointmentDb({
+        nombre: form.nombre.trim(),
+        telefono: form.telefono,
+        email: form.email,
+        nacimiento: me?.nacimiento ?? "1990-01-01",
+        doctorId: doc.id,
+        servicioId: srv.id,
+        fecha,
+        hora,
+        motivo: form.motivo.trim(),
+      });
+      if (res.ok) {
+        await syncFromSupabase();
+        toast.success("Cita confirmada", { description: "Te enviaremos un recordatorio 24h antes." });
+        setDone(true);
+      } else {
+        toast.error(res.error);
+      }
+      return;
+    }
     const pid = me?.id ?? upsertPatient({ nombre: form.nombre.trim(), telefono: form.telefono, email: form.email, nacimiento: "1990-01-01" });
     const r = createAppointment({ pacienteId: pid, doctorId: doc.id, servicioId: srv.id, fecha, hora, motivo: form.motivo.trim() });
     if (r.ok) { toast.success("Cita confirmada", { description: "Te enviaremos un recordatorio 24h antes." }); setDone(true); }

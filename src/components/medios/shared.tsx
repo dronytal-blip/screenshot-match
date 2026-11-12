@@ -3,7 +3,8 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Apple, Baby, HeartPulse, RotateCcw, Scan, SmilePlus, Stethoscope, LogOut, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
-import type { ApptStatus, Doctor, InvoiceStatus, PayMethod } from "@/lib/types";
+import { useAuth } from "@/contexts/AuthContext";
+import { PAY_METHODS, invoiceRemaining, type ApptStatus, type Doctor, type InvoiceStatus, type PayMethod } from "@/lib/types";
 import { availableSlots } from "@/lib/logic";
 import { addDays, parseISO, toISODate, todayISO, money } from "@/lib/dates";
 import { Calendar } from "@/components/ui/calendar";
@@ -60,7 +61,11 @@ export function Logo({ light }: { light?: boolean }) {
 export function Hydrated({ children }: { children: ReactNode }) {
   const hydrated = useStore((s) => s.hydrated);
   useEffect(() => {
-    if (!useStore.getState().hydrated) void useStore.persist.rehydrate();
+    const state = useStore.getState();
+    if (!state.hydrated) {
+      void useStore.persist.rehydrate();
+    }
+    void useStore.getState().syncFromSupabase();
   }, []);
   if (!hydrated)
     return (
@@ -90,9 +95,17 @@ export function ResetButton({ compact }: { compact?: boolean }) {
 
 export function LogoutButton() {
   const nav = useNavigate();
-  const setRole = useStore((s) => s.setRole);
+  const { signOut } = useAuth();
   return (
-    <Button variant="ghost" size="sm" onClick={() => { setRole(null); nav({ to: "/auth" }); }}>
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={async () => {
+        await signOut();
+        toast.success("Sesion cerrada");
+        void nav({ to: "/auth" });
+      }}
+    >
       <LogOut className="size-4" /> <span className="hidden sm:inline">Salir</span>
     </Button>
   );
@@ -213,27 +226,115 @@ export function ChargeDialog({ citaId, open, onOpenChange }: { citaId: string | 
   const a = appointments.find((x) => x.id === citaId);
   const srv = a && services.find((s) => s.id === a.servicioId);
   const existing = invoices.find((i) => i.citaId === citaId && i.estado !== "cancelled");
+  const prevAdelanto = existing?.adelanto ?? 0;
+
   const [monto, setMonto] = useState(0);
+  const [payMode, setPayMode] = useState<"full" | "advance">("full");
+  const [abono, setAbono] = useState(0);
   const [metodo, setMetodo] = useState<PayMethod>("efectivo");
   const [notas, setNotas] = useState("");
+
   useEffect(() => {
-    if (open) { setMonto(existing?.monto ?? srv?.precio ?? 0); setMetodo("efectivo"); setNotas(""); }
+    if (open) {
+      const total = existing?.monto ?? srv?.precio ?? 0;
+      const rem = Math.max(0, total - (existing?.adelanto ?? 0));
+      setMonto(total);
+      setPayMode("full");
+      setAbono(Math.round(rem / 2));
+      setMetodo(existing?.metodo ?? "efectivo");
+      setNotas(existing?.notas ?? "");
+    }
   }, [open, srv, existing]);
+
+  const remainingBefore = Math.max(0, monto - prevAdelanto);
+  const effectiveAbono = payMode === "full" ? remainingBefore : abono;
+  const remainingAfter = Math.max(0, remainingBefore - effectiveAbono);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Cobro rapido</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Cobro de consulta</DialogTitle></DialogHeader>
         {existing?.estado === "paid" ? (
-          <p className="text-sm text-muted-foreground">Esta consulta ya fue cobrada ({money(existing.monto)}).</p>
+          <p className="text-sm text-muted-foreground">Esta consulta ya fue cobrada en su totalidad ({money(existing.monto)}).</p>
         ) : (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">{srv?.nombre}</p>
-            <div className="space-y-1.5"><Label>Monto (S/)</Label><Input type="number" value={monto} onChange={(e) => setMonto(Number(e.target.value))} /></div>
+            <div className="space-y-1.5">
+              <Label>Monto total de la consulta (S/)</Label>
+              <Input type="number" value={monto} onChange={(e) => setMonto(Number(e.target.value))} />
+            </div>
+
+            {prevAdelanto > 0 && (
+              <div className="flex items-center justify-between rounded-xl bg-primary-soft px-3 py-2 text-xs font-semibold text-primary">
+                <span>Adelanto previo registrado: {money(prevAdelanto)}</span>
+                <span>Saldo actual: {money(remainingBefore)}</span>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label>Modalidad de pago</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPayMode("full")}
+                  className={cn(
+                    "rounded-xl border px-3 py-2 text-sm font-semibold transition-colors",
+                    payMode === "full"
+                      ? "border-primary bg-primary-soft text-primary"
+                      : "hover:border-primary",
+                  )}
+                >
+                  Pago total ({money(remainingBefore)})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPayMode("advance")}
+                  className={cn(
+                    "rounded-xl border px-3 py-2 text-sm font-semibold transition-colors",
+                    payMode === "advance"
+                      ? "border-primary bg-primary-soft text-primary"
+                      : "hover:border-primary",
+                  )}
+                >
+                  Dejar adelanto
+                </button>
+              </div>
+            </div>
+
+            {payMode === "advance" && (
+              <div className="space-y-1.5 rounded-xl border bg-muted/40 p-3">
+                <Label>Monto del adelanto / abono (S/)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={remainingBefore}
+                  value={abono}
+                  onChange={(e) => setAbono(Number(e.target.value))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Saldo pendiente despues de este abono:{" "}
+                  <span className="font-bold text-warning">{money(remainingAfter)}</span>
+                </p>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <Label>Metodo de pago</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {(["efectivo", "tarjeta", "transferencia"] as PayMethod[]).map((m) => (
-                  <button key={m} onClick={() => setMetodo(m)} className={cn("rounded-xl border px-2 py-2.5 text-sm font-semibold capitalize transition-colors", metodo === m ? "border-primary bg-primary-soft text-primary" : "hover:border-primary")}>{m}</button>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {PAY_METHODS.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setMetodo(m.id)}
+                    className={cn(
+                      "rounded-xl border px-2 py-2.5 text-sm font-semibold transition-colors",
+                      metodo === m.id
+                        ? "border-primary bg-primary-soft text-primary"
+                        : "hover:border-primary",
+                    )}
+                  >
+                    {m.label}
+                  </button>
                 ))}
               </div>
             </div>
@@ -245,9 +346,22 @@ export function ChargeDialog({ citaId, open, onOpenChange }: { citaId: string | 
           {existing?.estado !== "paid" && (
             <Button onClick={() => {
               if (!citaId) return;
-              const r = charge(citaId, monto, metodo, notas);
-              if (r.ok) { toast.success(`Cobro de ${money(monto)} registrado`); onOpenChange(false); } else toast.error(r.error);
-            }}>Confirmar Cobro</Button>
+              if (payMode === "advance" && (abono <= 0 || abono > remainingBefore)) {
+                toast.error("Ingresa un adelanto valido");
+                return;
+              }
+              const r = charge(citaId, monto, metodo, notas, effectiveAbono);
+              if (r.ok) {
+                toast.success(
+                  effectiveAbono >= remainingBefore
+                    ? `Cobro total de ${money(effectiveAbono)} registrado`
+                    : `Adelanto de ${money(effectiveAbono)} registrado (Saldo: ${money(remainingAfter)})`,
+                );
+                onOpenChange(false);
+              } else toast.error(r.error);
+            }}>
+              {payMode === "full" ? "Confirmar Cobro" : "Registrar Adelanto"}
+            </Button>
           )}
         </DialogFooter>
       </DialogContent>

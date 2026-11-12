@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Lock, MapPin, Phone, Mail, Sparkles, FileX, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo, ServiceIcon } from "@/components/medios/shared";
-import { IMG, seedClinic, seedDoctors, seedServices } from "@/lib/seed";
+import { IMG } from "@/lib/seed";
+import { useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -25,9 +26,9 @@ const TESTIMONIOS = [
 ];
 
 function Landing() {
-  const services = seedServices();
-  const doctors = seedDoctors();
-  const clinic = seedClinic();
+  const services = useStore((s) => s.services);
+  const doctors = useStore((s) => s.doctors);
+  const clinic = useStore((s) => s.clinic);
   const spec = (id: string) => services.find((s) => s.id === id)?.nombre;
   return (
     <div className="min-h-screen">

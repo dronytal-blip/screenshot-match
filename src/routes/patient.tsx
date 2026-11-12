@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState, Hydrated, InvoiceBadge, SlotPicker, StatusBadge, TabBar, TopBar, useSwipeTabs } from "@/components/medios/shared";
-import { CURRENT_PATIENT, useLookup, useStore } from "@/lib/store";
+import { useLookup, useStore } from "@/lib/store";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { patientCanCancel } from "@/lib/logic";
 import { fmtDateLong, money } from "@/lib/dates";
-import type { Appointment } from "@/lib/types";
+import { invoicePaidAmount, invoiceRemaining, type Appointment } from "@/lib/types";
 
 export const Route = createFileRoute("/patient")({
   head: () => ({
@@ -20,7 +21,13 @@ export const Route = createFileRoute("/patient")({
       { property: "og:description", content: "Portal del paciente de MediOS." },
     ],
   }),
-  component: () => <Hydrated><Patient /></Hydrated>,
+  component: () => (
+    <Hydrated>
+      <ProtectedRoute allowedRoles={["patient"]}>
+        <Patient />
+      </ProtectedRoute>
+    </Hydrated>
+  ),
 });
 
 type Tab = "citas" | "historial" | "pagos";
@@ -32,7 +39,8 @@ const TABS = [
 
 function Patient() {
   const [tab, setTab] = useState<Tab>("citas");
-  const me = useStore((s) => s.patients.find((p) => p.id === CURRENT_PATIENT));
+  const currentPatientId = useStore((s) => s.currentPatientId);
+  const me = useStore((s) => s.patients.find((p) => p.id === currentPatientId) ?? s.patients[0]);
   const swipe = useSwipeTabs(TABS.map((t) => t.id), tab, setTab);
   return (
     <div className="min-h-screen">
@@ -51,11 +59,11 @@ function Patient() {
 }
 
 function Citas() {
-  const { appointments, transition } = useStore();
+  const { appointments, transition, currentPatientId } = useStore();
   const L = useLookup();
   const [cancelId, setCancelId] = useState<string | null>(null);
   const [resch, setResch] = useState<Appointment | null>(null);
-  const list = appointments.filter((a) => a.pacienteId === CURRENT_PATIENT && ["scheduled", "confirmed", "in_progress"].includes(a.estado))
+  const list = appointments.filter((a) => a.pacienteId === currentPatientId && ["scheduled", "confirmed", "in_progress"].includes(a.estado))
     .sort((a, b) => (a.fecha + a.hora).localeCompare(b.fecha + b.hora));
   return (
     <>
@@ -120,8 +128,9 @@ export function RescheduleDialog({ appt, onClose }: { appt: Appointment; onClose
 
 function Historial() {
   const appts = useStore((s) => s.appointments);
+  const currentPatientId = useStore((s) => s.currentPatientId);
   const L = useLookup();
-  const list = appts.filter((a) => a.pacienteId === CURRENT_PATIENT && ["completed", "cancelled", "no_show"].includes(a.estado)).sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const list = appts.filter((a) => a.pacienteId === currentPatientId && ["completed", "cancelled", "no_show"].includes(a.estado)).sort((a, b) => b.fecha.localeCompare(a.fecha));
   if (!list.length) return <EmptyState icon={History} title="Aun no tienes consultas pasadas" />;
   return (
     <div className="space-y-3">
@@ -140,9 +149,9 @@ function Historial() {
 }
 
 function Pagos() {
-  const { invoices, appointments } = useStore();
+  const { invoices, appointments, currentPatientId } = useStore();
   const L = useLookup();
-  const list = invoices.filter((i) => i.pacienteId === CURRENT_PATIENT && i.estado !== "cancelled").sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const list = invoices.filter((i) => i.pacienteId === currentPatientId && i.estado !== "cancelled").sort((a, b) => b.fecha.localeCompare(a.fecha));
   const pending = list.some((i) => i.estado === "pending");
   return (
     <>
@@ -151,12 +160,19 @@ function Pagos() {
         <div className="space-y-3">
           {list.map((i) => {
             const a = appointments.find((x) => x.id === i.citaId);
+            const adelanto = invoicePaidAmount(i);
+            const saldo = invoiceRemaining(i);
             return (
               <div key={i.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-5 shadow-soft">
                 <div>
                   <p className="font-display text-xl font-extrabold">{money(i.monto)}</p>
-                  <p className="text-sm text-muted-foreground">{a && L.service(a.servicioId)?.nombre} · {fmtDateLong(i.fecha)}</p>
+                  <p className="text-sm text-muted-foreground">{(a && L.service(a.servicioId)?.nombre) ?? (i.notas || "Cobro en clinica")} · {fmtDateLong(i.fecha)}</p>
                   <p className="text-sm capitalize text-muted-foreground">{i.metodo ?? "Por pagar en clinica"}</p>
+                  {i.estado === "pending" && adelanto > 0 && (
+                    <p className="mt-1 text-xs font-semibold text-primary">
+                      Adelanto: {money(adelanto)} · Saldo pendiente: <span className="text-warning">{money(saldo)}</span>
+                    </p>
+                  )}
                 </div>
                 <InvoiceBadge status={i.estado} />
               </div>

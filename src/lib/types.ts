@@ -1,7 +1,14 @@
 export type Role = "admin" | "doctor" | "patient";
 export type ApptStatus = "scheduled" | "confirmed" | "in_progress" | "completed" | "cancelled" | "no_show";
 export type InvoiceStatus = "pending" | "paid" | "cancelled";
-export type PayMethod = "efectivo" | "tarjeta" | "transferencia";
+export type PayMethod = "efectivo" | "tarjeta" | "transferencia" | "yape";
+
+export const PAY_METHODS: { id: PayMethod; label: string }[] = [
+  { id: "efectivo", label: "Efectivo" },
+  { id: "transferencia", label: "Transferencia" },
+  { id: "tarjeta", label: "Tarjeta" },
+  { id: "yape", label: "Yape" },
+];
 
 export interface Service {
   id: string;
@@ -62,11 +69,23 @@ export interface Invoice {
   citaId: string;
   pacienteId: string;
   monto: number;
+  adelanto?: number | undefined;
   estado: InvoiceStatus;
   metodo: PayMethod | null;
   fechaPago: string | null;
   fecha: string;
   notas: string;
+}
+
+export function invoicePaidAmount(i: Invoice): number {
+  if (i.estado === "cancelled") return 0;
+  if (i.estado === "paid") return i.monto;
+  return Math.min(i.monto, Math.max(0, i.adelanto ?? 0));
+}
+
+export function invoiceRemaining(i: Invoice): number {
+  if (i.estado !== "pending") return 0;
+  return Math.max(0, i.monto - invoicePaidAmount(i));
 }
 
 export interface Clinic {

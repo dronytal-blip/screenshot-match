@@ -5,7 +5,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ChargeDialog, EmptyState, Hydrated, StatusBadge, TabBar, TopBar, useSwipeTabs } from "@/components/medios/shared";
-import { CURRENT_DOCTOR, useLookup, useStore } from "@/lib/store";
+import { useLookup, useStore } from "@/lib/store";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { age, fmtDateLong, todayISO } from "@/lib/dates";
 
 export const Route = createFileRoute("/doctor")({
@@ -17,7 +18,13 @@ export const Route = createFileRoute("/doctor")({
       { property: "og:description", content: "Panel del doctor de MediOS." },
     ],
   }),
-  component: () => <Hydrated><DoctorPanel /></Hydrated>,
+  component: () => (
+    <Hydrated>
+      <ProtectedRoute allowedRoles={["doctor"]}>
+        <DoctorPanel />
+      </ProtectedRoute>
+    </Hydrated>
+  ),
 });
 
 type Tab = "dia" | "consulta" | "pacientes";
@@ -29,7 +36,8 @@ const TABS = [
 
 function DoctorPanel() {
   const [tab, setTab] = useState<Tab>("dia");
-  const doc = useStore((s) => s.doctors.find((d) => d.id === CURRENT_DOCTOR));
+  const currentDoctorId = useStore((s) => s.currentDoctorId);
+  const doc = useStore((s) => s.doctors.find((d) => d.id === currentDoctorId) ?? s.doctors[0]);
   const swipe = useSwipeTabs(TABS.map((t) => t.id), tab, setTab);
   return (
     <div className="min-h-screen">
@@ -47,9 +55,9 @@ function DoctorPanel() {
 }
 
 function MiDia({ goConsulta }: { goConsulta: () => void }) {
-  const { appointments, transition } = useStore();
+  const { appointments, transition, currentDoctorId } = useStore();
   const L = useLookup();
-  const today = appointments.filter((a) => a.doctorId === CURRENT_DOCTOR && a.fecha === todayISO()).sort((a, b) => a.hora.localeCompare(b.hora));
+  const today = appointments.filter((a) => a.doctorId === currentDoctorId && a.fecha === todayISO()).sort((a, b) => a.hora.localeCompare(b.hora));
   const next = today.find((a) => a.estado === "confirmed" || a.estado === "scheduled");
   const act = (id: string, to: "in_progress" | "no_show" | "confirmed") => {
     const r = transition(id, to);
@@ -103,9 +111,9 @@ function MiDia({ goConsulta }: { goConsulta: () => void }) {
 }
 
 function Consulta() {
-  const { appointments, invoices, updateNotes, transition } = useStore();
+  const { appointments, invoices, updateNotes, transition, currentDoctorId } = useStore();
   const L = useLookup();
-  const a = appointments.find((x) => x.doctorId === CURRENT_DOCTOR && x.estado === "in_progress");
+  const a = appointments.find((x) => x.doctorId === currentDoctorId && x.estado === "in_progress");
   const [notes, setNotes] = useState(a?.notas ?? "");
   const [charge, setCharge] = useState(false);
   useEffect(() => { setNotes(a?.notas ?? ""); }, [a?.id]);
@@ -160,9 +168,10 @@ function Consulta() {
 
 function MisPacientes() {
   const appts = useStore((s) => s.appointments);
+  const currentDoctorId = useStore((s) => s.currentDoctorId);
   const L = useLookup();
   const [sel, setSel] = useState<string | null>(null);
-  const mine = appts.filter((a) => a.doctorId === CURRENT_DOCTOR && a.estado === "completed");
+  const mine = appts.filter((a) => a.doctorId === currentDoctorId && a.estado === "completed");
   const ids = [...new Set(mine.map((a) => a.pacienteId))];
   if (sel) {
     const p = L.patient(sel)!;
