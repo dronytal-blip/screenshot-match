@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import type { Appointment, ApptStatus } from "@/lib/types";
+import type { Appointment, ApptStatus, OdontogramData } from "@/lib/types";
 import { isUuid, mapDbAppointment, type DbAppointmentRow } from "./mappers";
 
 export const APPOINTMENTS_QUERY_KEY = ["appointments"] as const;
@@ -11,7 +11,7 @@ export async function fetchAppointments(
   let query = supabase
     .from("appointments")
     .select(
-      "id, clinic_id, paciente_id, doctor_id, servicio_id, fecha, hora, duracion, estado, motivo, notas, created_at, appointment_events(id, cita_id, tipo, created_at)",
+      "id, clinic_id, paciente_id, doctor_id, servicio_id, fecha, hora, duracion, estado, motivo, notas, odontograma, created_at, appointment_events(id, cita_id, tipo, created_at)",
     )
     .order("fecha", { ascending: false })
     .order("hora", { ascending: true });
@@ -173,6 +173,18 @@ export async function updateAppointmentNotesDb(
       tipo: "notes_added",
     });
   }
+}
+
+export async function updateAppointmentOdontogramaDb(
+  id: string,
+  odontograma: OdontogramData,
+): Promise<void> {
+  const { error } = await supabase
+    .from("appointments")
+    .update({ odontograma })
+    .eq("id", id);
+
+  if (error) throw error;
 }
 
 export function useAppointmentsQuery(clinicId?: string) {

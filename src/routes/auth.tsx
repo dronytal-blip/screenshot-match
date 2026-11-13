@@ -72,9 +72,17 @@ const DEMO_USERS: {
     role: "doctor",
     icon: Stethoscope,
     title: "Doctor",
-    subtitle: "Atiende pacientes",
+    subtitle: "Medicina General",
     who: "Dra. Sofia Martinez",
     email: "sofia@medios.demo",
+  },
+  {
+    role: "doctor",
+    icon: Stethoscope,
+    title: "Odontologo",
+    subtitle: "Odontograma clinico",
+    who: "Dr. Carlos Herrera",
+    email: "carlos@medios.demo",
   },
   {
     role: "patient",
@@ -341,10 +349,10 @@ function Auth() {
             <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Acceso rapido de demostracion (1 clic · password: demo1234)
             </p>
-            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {DEMO_USERS.map((d) => (
                 <button
-                  key={d.role}
+                  key={d.email}
                   type="button"
                   disabled={submitting}
                   onClick={() => handleDemoLogin(d.email)}

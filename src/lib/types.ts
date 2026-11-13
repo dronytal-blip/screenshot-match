@@ -50,6 +50,42 @@ export interface ApptEvent {
   timestamp: string;
 }
 
+export type ToothSurface = "V" | "L" | "M" | "D" | "O";
+
+export type SurfaceCondition =
+  | "sano"
+  | "caries"
+  | "resina_buena"
+  | "resina_mala"
+  | "amalgama"
+  | "sellante_bueno"
+  | "sellante_malo";
+
+export type WholeToothCondition =
+  | "none"
+  | "ausente"
+  | "extraccion_indicada"
+  | "corona_buena"
+  | "corona_mala"
+  | "endodoncia_buena"
+  | "endodoncia_mala"
+  | "implante"
+  | "fractura"
+  | "protesis"
+  | "ortodoncia";
+
+export interface ToothRecord {
+  surfaces?: Partial<Record<ToothSurface, SurfaceCondition>> | undefined;
+  whole?: WholeToothCondition | undefined;
+  notes?: string | undefined;
+}
+
+export interface OdontogramData {
+  denticion?: "adult" | "child" | "mixed" | undefined;
+  teeth?: Record<string, ToothRecord> | undefined;
+  observaciones?: string | undefined;
+}
+
 export interface Appointment {
   id: string;
   pacienteId: string;
@@ -61,6 +97,7 @@ export interface Appointment {
   estado: ApptStatus;
   motivo: string;
   notas: string;
+  odontograma?: OdontogramData | undefined;
   eventos: ApptEvent[];
 }
 

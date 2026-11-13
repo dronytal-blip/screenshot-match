@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { AlertTriangle, CalendarDays, CalendarPlus, History, Receipt } from "lucide-react";
+import { AlertTriangle, CalendarDays, CalendarPlus, History, Receipt, SmilePlus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState, Hydrated, InvoiceBadge, SlotPicker, StatusBadge, TabBar, TopBar, useSwipeTabs } from "@/components/medios/shared";
+import { Odontogram, isToothModified } from "@/components/medios/odontogram";
 import { useLookup, useStore } from "@/lib/store";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { patientCanCancel } from "@/lib/logic";
@@ -130,20 +131,48 @@ function Historial() {
   const appts = useStore((s) => s.appointments);
   const currentPatientId = useStore((s) => s.currentPatientId);
   const L = useLookup();
+  const [viewOdonto, setViewOdonto] = useState<Appointment | null>(null);
   const list = appts.filter((a) => a.pacienteId === currentPatientId && ["completed", "cancelled", "no_show"].includes(a.estado)).sort((a, b) => b.fecha.localeCompare(a.fecha));
   if (!list.length) return <EmptyState icon={History} title="Aun no tienes consultas pasadas" />;
   return (
     <div className="space-y-3">
-      {list.map((a) => (
-        <div key={a.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-5 shadow-soft">
-          <div>
-            <p className="font-bold">{fmtDateLong(a.fecha)}</p>
-            <p className="text-sm text-muted-foreground">{L.doctor(a.doctorId)?.nombre} · {L.service(a.servicioId)?.nombre}</p>
-            <p className="mt-1 text-sm">{a.motivo}</p>
+      {list.map((a) => {
+        const hasOdonto = Boolean(
+          a.odontograma &&
+            (a.odontograma.observaciones?.trim() ||
+              Object.values(a.odontograma.teeth ?? {}).some((r) => isToothModified(r))),
+        );
+        return (
+          <div key={a.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-5 shadow-soft">
+            <div>
+              <p className="font-bold">{fmtDateLong(a.fecha)}</p>
+              <p className="text-sm text-muted-foreground">{L.doctor(a.doctorId)?.nombre} · {L.service(a.servicioId)?.nombre}</p>
+              <p className="mt-1 text-sm">{a.motivo}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {hasOdonto && (
+                <Button size="sm" variant="outline" onClick={() => setViewOdonto(a)}>
+                  <SmilePlus className="size-4 text-primary" /> Mi Odontograma
+                </Button>
+              )}
+              <StatusBadge status={a.estado} />
+            </div>
           </div>
-          <StatusBadge status={a.estado} />
-        </div>
-      ))}
+        );
+      })}
+      {viewOdonto && (
+        <Dialog open onOpenChange={(o) => !o && setViewOdonto(null)}>
+          <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Mi Odontograma — {fmtDateLong(viewOdonto.fecha)}</DialogTitle>
+            </DialogHeader>
+            <Odontogram value={viewOdonto.odontograma} readOnly />
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setViewOdonto(null)}>Cerrar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

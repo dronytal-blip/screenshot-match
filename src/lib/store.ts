@@ -6,6 +6,7 @@ import type {
   Clinic,
   Doctor,
   Invoice,
+  OdontogramData,
   Patient,
   PayMethod,
   Role,
@@ -41,6 +42,7 @@ import {
   syncServicesDb,
   transitionAppointmentDb,
   updateAppointmentNotesDb,
+  updateAppointmentOdontogramaDb,
   updateClinicDb,
   updateDoctorDb,
   updateInvoicePaymentDb,
@@ -75,6 +77,7 @@ interface State {
   supabaseSynced: boolean;
   syncing: boolean;
   setRole: (r: Role | null) => void;
+  setCurrentDoctor: (doctorId: string) => void;
   syncFromSupabase: (userId?: string | null) => Promise<void>;
   reset: () => void;
   completeOnboarding: () => void;
@@ -89,6 +92,7 @@ interface State {
   }) => Result;
   reschedule: (id: string, fecha: string, hora: string) => Result;
   updateNotes: (id: string, notas: string) => void;
+  updateOdontograma: (id: string, odontograma: OdontogramData) => void;
   charge: (
     citaId: string,
     monto: number,
@@ -149,6 +153,7 @@ export const useStore = create<State>()(
       supabaseSynced: false,
       syncing: false,
       setRole: (role) => set({ role }),
+      setCurrentDoctor: (currentDoctorId) => set({ currentDoctorId }),
 
       syncFromSupabase: async (explicitUserId) => {
         if (get().syncing) return;
@@ -416,6 +421,23 @@ export const useStore = create<State>()(
         if (isUuid(get().clinicId) && isUuid(id)) {
           void updateAppointmentNotesDb(id, notas, !hadEvent).catch((err) => {
             console.error("[MediOS] Error en updateAppointmentNotesDb:", err);
+          });
+        }
+      },
+
+      updateOdontograma: (id, odontograma) => {
+        set({
+          appointments: get().appointments.map((x) =>
+            x.id === id ? { ...x, odontograma } : x,
+          ),
+        });
+
+        if (isUuid(get().clinicId) && isUuid(id)) {
+          void updateAppointmentOdontogramaDb(id, odontograma).catch((err) => {
+            console.error(
+              "[MediOS] Error en updateAppointmentOdontogramaDb:",
+              err,
+            );
           });
         }
       },

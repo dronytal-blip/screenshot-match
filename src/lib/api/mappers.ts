@@ -6,6 +6,7 @@ import type {
   Doctor,
   Invoice,
   InvoiceStatus,
+  OdontogramData,
   Patient,
   PayMethod,
   Schedule,
@@ -75,6 +76,7 @@ export interface DbAppointmentRow {
   estado: ApptStatus;
   motivo: string;
   notas: string;
+  odontograma?: OdontogramData | null | undefined;
   created_at: string;
   appointment_events?: DbAppointmentEventRow[] | undefined;
 }
@@ -199,6 +201,10 @@ export function mapDbAppointment(row: DbAppointmentRow): Appointment {
     estado: row.estado,
     motivo: row.motivo ?? "",
     notas: row.notas ?? "",
+    odontograma:
+      row.odontograma && typeof row.odontograma === "object"
+        ? row.odontograma
+        : undefined,
     eventos,
   };
 }
